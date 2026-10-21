@@ -33,14 +33,7 @@
     </dependencies>
 
     <build>
-        <defaultGoal>clean package</defaultGoal>
-
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <filtering>true</filtering>
-            </resource>
-        </resources>
+        <defaultGoal>clean verify</defaultGoal>
 
         <plugins>
             <plugin>
@@ -53,4 +46,5 @@
             </plugin>
         </plugins>
     </build>
+
 </project>
