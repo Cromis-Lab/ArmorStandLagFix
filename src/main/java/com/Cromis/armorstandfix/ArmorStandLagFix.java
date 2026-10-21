@@ -38,7 +38,7 @@ public final class ArmorStandLagFix extends JavaPlugin implements Listener {
     }
 
     private void scheduleCleanup() {
-        // Only schedule cleanup if there isn't already one pending.
+        // Only one cleanup task can be pending at a time.
         if (cleanupTask != null) {
             return;
         }
@@ -65,11 +65,6 @@ public final class ArmorStandLagFix extends JavaPlugin implements Listener {
             if (entry.getValue() != currentTick) {
                 iterator.remove();
             }
-        }
-
-        // If entries remain, schedule another check.
-        if (!lastHitTick.isEmpty()) {
-            scheduleCleanup();
         }
     }
 
