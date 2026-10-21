@@ -1,0 +1,1 @@
+Unverified Theory: This has not yet been proven to work. The current hypothesis is that when server lag occurs while a player is attacking an armor stand, the queued hits may all be processed within a single tick once the server recovers.
