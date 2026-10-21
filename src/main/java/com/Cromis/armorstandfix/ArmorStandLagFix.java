@@ -1,4 +1,9 @@
+
 package com.Cromis.armorstandfix;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.ArmorStand;
@@ -7,36 +12,49 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public class ArmorStandLagFix extends JavaPlugin implements Listener {
+public final class ArmorStandLagFix extends JavaPlugin implements Listener {
 
-    private static final String LAST_TICK_KEY = "as-last-hit-tick";
+    private final Map<UUID, Integer> lastHitTick = new HashMap<>();
 
     @Override
     public void onEnable() {
-        getServer().getPluginManager().registerEvents(this, this);
-        getLogger().info("ArmorStandLagFix by Cromis (Per-Tick Mode) enabled!");
+        Bukkit.getPluginManager().registerEvents(this, this);
+        getLogger().info("ArmorStandLagFix enabled.");
     }
 
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    @Override
+    public void onDisable() {
+        lastHitTick.clear();
+    }
+
+    @EventHandler(
+        priority = EventPriority.HIGHEST,
+        ignoreCancelled = true
+    )
     public void onArmorStandDamage(EntityDamageByEntityEvent event) {
-        if (!(event.getEntity() instanceof ArmorStand) || !(event.getDamager() instanceof Player)) {
+        if (!(event.getEntity() instanceof ArmorStand armorStand)) {
             return;
         }
 
-        ArmorStand stand = (ArmorStand) event.getEntity();
-        long currentTick = Bukkit.getCurrentTick();
-
-        if (stand.hasMetadata(LAST_TICK_KEY)) {
-            long lastHitTick = stand.getMetadata(LAST_TICK_KEY).get(0).asLong();
-            if (lastHitTick == currentTick) {
-                event.setCancelled(true);
-                return;
-            }
+        if (!(event.getDamager() instanceof Player)) {
+            return;
         }
 
-        stand.setMetadata(LAST_TICK_KEY, new FixedMetadataValue(this, currentTick));
+        int currentTick = Bukkit.getCurrentTick();
+        UUID armorStandId = armorStand.getUniqueId();
+
+        Integer previousTick = lastHitTick.putIfAbsent(
+            armorStandId,
+            currentTick
+        );
+
+        if (previousTick != null && previousTick == currentTick) {
+            event.setCancelled(true);
+            return;
+        }
+
+        lastHitTick.put(armorStandId, currentTick);
     }
 }
