@@ -1,6 +1,6 @@
 name: ArmorStandLagFix
-version: 1.0
+version: '1.0.0'
 main: com.Cromis.armorstandfix.ArmorStandLagFix
-api-version: 1.13
+api-version: '26.3'
 author: Cromis
-description: Limits armor stand damage to exactly one hit per server tick to prevent lag breaks.
+description: Limits armor stand damage to one hit per server tick.
