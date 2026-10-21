@@ -2,6 +2,7 @@
 package com.Cromis.armorstandfix;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 
@@ -17,6 +18,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class ArmorStandLagFix extends JavaPlugin implements Listener {
 
     private final Map<UUID, Integer> lastHitTick = new HashMap<>();
+    private int lastCleanupTick = 0;
 
     @Override
     public void onEnable() {
@@ -34,6 +36,7 @@ public final class ArmorStandLagFix extends JavaPlugin implements Listener {
         ignoreCancelled = true
     )
     public void onArmorStandDamage(EntityDamageByEntityEvent event) {
+        // Only handle direct damage from players.
         if (!(event.getEntity() instanceof ArmorStand armorStand)) {
             return;
         }
@@ -45,16 +48,30 @@ public final class ArmorStandLagFix extends JavaPlugin implements Listener {
         int currentTick = Bukkit.getCurrentTick();
         UUID armorStandId = armorStand.getUniqueId();
 
+        // Remove entries from older ticks periodically.
+        if (currentTick != lastCleanupTick) {
+            lastCleanupTick = currentTick;
+
+            Iterator<Map.Entry<UUID, Integer>> iterator =
+                lastHitTick.entrySet().iterator();
+
+            while (iterator.hasNext()) {
+                Map.Entry<UUID, Integer> entry = iterator.next();
+
+                if (entry.getValue() != currentTick) {
+                    iterator.remove();
+                }
+            }
+        }
+
         Integer previousTick = lastHitTick.putIfAbsent(
             armorStandId,
             currentTick
         );
 
+        // Cancel additional player hits on this stand during this tick.
         if (previousTick != null && previousTick == currentTick) {
             event.setCancelled(true);
-            return;
         }
-
-        lastHitTick.put(armorStandId, currentTick);
     }
 }
