@@ -90,7 +90,7 @@ public final class ArmorStandLagFix extends JavaPlugin implements Listener {
         int currentTick = Bukkit.getCurrentTick();
         UUID armorStandId = armorStand.getUniqueId();
 
-        Integer previousTick = lastHitTick.putIfAbsent(
+        Integer previousTick = lastHitTick.put(
             armorStandId,
             currentTick
         );
