@@ -14,11 +14,12 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 public final class ArmorStandLagFix extends JavaPlugin implements Listener {
 
     private final Map<UUID, Integer> lastHitTick = new HashMap<>();
-    private int lastCleanupTick = 0;
+    private BukkitTask cleanupTask;
 
     @Override
     public void onEnable() {
@@ -28,7 +29,48 @@ public final class ArmorStandLagFix extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        if (cleanupTask != null) {
+            cleanupTask.cancel();
+            cleanupTask = null;
+        }
+
         lastHitTick.clear();
+    }
+
+    private void scheduleCleanup() {
+        // Only schedule cleanup if there isn't already one pending.
+        if (cleanupTask != null) {
+            return;
+        }
+
+        cleanupTask = Bukkit.getScheduler().runTaskLater(
+            this,
+            () -> {
+                cleanupTask = null;
+                cleanupOldEntries();
+            },
+            1L
+        );
+    }
+
+    private void cleanupOldEntries() {
+        int currentTick = Bukkit.getCurrentTick();
+
+        Iterator<Map.Entry<UUID, Integer>> iterator =
+            lastHitTick.entrySet().iterator();
+
+        while (iterator.hasNext()) {
+            Map.Entry<UUID, Integer> entry = iterator.next();
+
+            if (entry.getValue() != currentTick) {
+                iterator.remove();
+            }
+        }
+
+        // If entries remain, schedule another check.
+        if (!lastHitTick.isEmpty()) {
+            scheduleCleanup();
+        }
     }
 
     @EventHandler(
@@ -36,7 +78,6 @@ public final class ArmorStandLagFix extends JavaPlugin implements Listener {
         ignoreCancelled = true
     )
     public void onArmorStandDamage(EntityDamageByEntityEvent event) {
-        // Only handle direct damage from players.
         if (!(event.getEntity() instanceof ArmorStand armorStand)) {
             return;
         }
@@ -48,26 +89,14 @@ public final class ArmorStandLagFix extends JavaPlugin implements Listener {
         int currentTick = Bukkit.getCurrentTick();
         UUID armorStandId = armorStand.getUniqueId();
 
-        // Remove entries from older ticks periodically.
-        if (currentTick != lastCleanupTick) {
-            lastCleanupTick = currentTick;
-
-            Iterator<Map.Entry<UUID, Integer>> iterator =
-                lastHitTick.entrySet().iterator();
-
-            while (iterator.hasNext()) {
-                Map.Entry<UUID, Integer> entry = iterator.next();
-
-                if (entry.getValue() != currentTick) {
-                    iterator.remove();
-                }
-            }
-        }
-
         Integer previousTick = lastHitTick.putIfAbsent(
             armorStandId,
             currentTick
         );
+
+        if (previousTick == null) {
+            scheduleCleanup();
+        }
 
         // Cancel additional player hits on this stand during this tick.
         if (previousTick != null && previousTick == currentTick) {
