@@ -29,28 +29,29 @@ public final class ArmorStandLagFix extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        stopCleanupTask();
+        lastHitTick.clear();
+    }
+
+    private void startCleanupTask() {
+        // Only one cleanup task can run at a time.
+        if (cleanupTask != null || lastHitTick.isEmpty()) {
+            return;
+        }
+
+        cleanupTask = Bukkit.getScheduler().runTaskTimer(
+            this,
+            this::cleanupOldEntries,
+            20L,
+            20L
+        );
+    }
+
+    private void stopCleanupTask() {
         if (cleanupTask != null) {
             cleanupTask.cancel();
             cleanupTask = null;
         }
-
-        lastHitTick.clear();
-    }
-
-    private void scheduleCleanup() {
-        // Only one cleanup task can be pending at a time.
-        if (cleanupTask != null) {
-            return;
-        }
-
-        cleanupTask = Bukkit.getScheduler().runTaskLater(
-            this,
-            () -> {
-                cleanupTask = null;
-                cleanupOldEntries();
-            },
-            1L
-        );
     }
 
     private void cleanupOldEntries() {
@@ -65,6 +66,11 @@ public final class ArmorStandLagFix extends JavaPlugin implements Listener {
             if (entry.getValue() != currentTick) {
                 iterator.remove();
             }
+        }
+
+        // Stop checking when there is nothing left to clean.
+        if (lastHitTick.isEmpty()) {
+            stopCleanupTask();
         }
     }
 
@@ -90,7 +96,7 @@ public final class ArmorStandLagFix extends JavaPlugin implements Listener {
         );
 
         if (previousTick == null) {
-            scheduleCleanup();
+            startCleanupTask();
         }
 
         // Cancel additional player hits on this stand during this tick.
